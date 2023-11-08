@@ -55,7 +55,7 @@ public class application {
 
     private static void createBillsTable(Connection connection) throws Exception {
         Statement createTableStatement = connection.createStatement();
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS bills ( Bill_Id INT AUTO_INCREMENT PRIMARY KEY, Order_Id INT, Date DATE, Time TIME, Customer_Name VARCHAR(50), Customer_Company VARCHAR(100), User_Name VARCHAR(50), FOREIGN KEY (Order_Id) REFERENCES orders(Order_Id) )";
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS bills ( Bill_Id INT AUTO_INCREMENT PRIMARY KEY, Order_Id INT, Date DATE, Time TIME, Customer_Name VARCHAR(50), Customer_Company VARCHAR(100), tax_percentage INT, User_Name VARCHAR(50), FOREIGN KEY (Order_Id) REFERENCES orders(Order_Id) )";
         createTableStatement.executeUpdate(createTableQuery);
     }
 
