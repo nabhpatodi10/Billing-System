@@ -116,5 +116,3 @@ We welcome contributions from the community. If you want to contribute to this p
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-Customize this README with your project-specific information and requirements, and include relevant documentation and screenshots to make it user-friendly.
