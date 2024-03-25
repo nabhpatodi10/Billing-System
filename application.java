@@ -37,43 +37,43 @@ public class application {
 
 	private static void createCustomersTable(Connection connection) throws Exception {
         Statement createTableStatement = connection.createStatement();
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS customers ( Customer_id INT AUTO_INCREMENT PRIMARY KEY, Customer_Name VARCHAR(50), Customer_Company VARCHAR(100), Phone_Number VARCHAR(13), Email VARCHAR(50), Address VARCHAR(200) )";
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS customers ( Customer_Id INT AUTO_INCREMENT PRIMARY KEY, Customer_Name VARCHAR(50) NOT NULL, Customer_Company VARCHAR(100), GSTIN VARCHAR(15), Phone_Number VARCHAR(13), Email VARCHAR(50), Address VARCHAR(200) )";
         createTableStatement.executeUpdate(createTableQuery);
 	}
 
     private static void createItemStockTable(Connection connection) throws Exception {
         Statement createTableStatement = connection.createStatement();
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS item_stock ( Item_Id INT AUTO_INCREMENT PRIMARY KEY, Item_Name VARCHAR(100) UNIQUE, Item_Stock INT )";
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS item_stock ( Item_Id INT AUTO_INCREMENT PRIMARY KEY, Item_Name VARCHAR(100) UNIQUE NOT NULL, Item_Stock INT DEFAULT 0)";
         createTableStatement.executeUpdate(createTableQuery);
     }
 
     private static void createOrdersTable(Connection connection) throws Exception {
         Statement createTableStatement = connection.createStatement();
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS orders ( Order_Id INT AUTO_INCREMENT PRIMARY KEY, Order_Date DATE, Customer_Id INT, Order_Status VARCHAR(20), FOREIGN KEY (Customer_Id) REFERENCES customers(Customer_Id) )";
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS orders ( Order_Id INT AUTO_INCREMENT PRIMARY KEY, Order_Date DATE DEFAULT (CURDATE()), Customer_Id INT NOT NULL, Order_Status VARCHAR(20) NOT NULL, FOREIGN KEY (Customer_Id) REFERENCES customers(Customer_Id) )";
         createTableStatement.executeUpdate(createTableQuery);
     }
 
     private static void createBillsTable(Connection connection) throws Exception {
         Statement createTableStatement = connection.createStatement();
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS bills ( Bill_Id INT AUTO_INCREMENT PRIMARY KEY, Order_Id INT, Date DATE, Time TIME, Customer_Name VARCHAR(50), Customer_Company VARCHAR(100), tax_percentage INT, User_Name VARCHAR(50), FOREIGN KEY (Order_Id) REFERENCES orders(Order_Id) )";
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS bills ( Bill_Id INT PRIMARY KEY, Order_Id INT NOT NULL, Date DATE DEFAULT (CURDATE()), Time TIME DEFAULT (CURTIME()), Customer_Id INT NOT NULL, Shipping_Address VARCHAR(200) NOT NULL, tax_percentage INT, User_Name VARCHAR(50) NOT NULL, FOREIGN KEY (Order_Id) REFERENCES orders(Order_Id), FOREIGN KEY (Customer_Id) REFERENCES customers(Customer_Id) )";
         createTableStatement.executeUpdate(createTableQuery);
     }
 
     private static void createPaymentsTable(Connection connection) throws Exception {
         Statement createTableStatement = connection.createStatement();
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS payments (Order_Id INT, Bill_Id INT, Payment_Method VARCHAR(25), Payment_Status VARCHAR(30), FOREIGN KEY (Order_Id) REFERENCES orders(Order_Id), FOREIGN KEY (Bill_Id) REFERENCES bills(Bill_Id) )";
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS payments (Order_Id INT NOT NULL, Bill_Id INT, Payment_Method VARCHAR(25) NOT NULL, Payment_Status VARCHAR(30) NOT NULL, FOREIGN KEY (Order_Id) REFERENCES orders(Order_Id), FOREIGN KEY (Bill_Id) REFERENCES bills(Bill_Id) )";
         createTableStatement.executeUpdate(createTableQuery);
     }
 
     private static void createItemsTable(Connection connection) throws Exception {
         Statement createTableStatement = connection.createStatement();
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS items (Order_Id INT, Bill_Id INT, Item_Id INT, Item_Name VARCHAR(100), Quantity INT, Rate INT, FOREIGN KEY (Order_Id) REFERENCES orders(Order_Id), FOREIGN KEY (Bill_Id) REFERENCES bills(Bill_Id), FOREIGN KEY (Item_Id) REFERENCES item_stock(Item_Id), FOREIGN KEY (Item_Name) REFERENCES item_stock(Item_Name) );";
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS items (Order_Id INT NOT NULL, Bill_Id INT, Item_Id INT NOT NULL, Quantity INT NOT NULL, Rate INT NOT NULL, FOREIGN KEY (Order_Id) REFERENCES orders(Order_Id), FOREIGN KEY (Bill_Id) REFERENCES bills(Bill_Id), FOREIGN KEY (Item_Id) REFERENCES item_stock(Item_Id) );";
         createTableStatement.executeUpdate(createTableQuery);
     }
 
     private static void createCompanyDetailsTable(Connection connection) throws Exception {
         Statement createTableStatement = connection.createStatement();
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS company_details (GSTIN VARCHAR(20) UNIQUE, Office_Address VARCHAR(300), Email VARCHAR(100), Website VARCHAR(75), Phone_Number VARCHAR(13));";
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS company_details (GSTIN VARCHAR(15) UNIQUE NOT NULL, Office_Address VARCHAR(300) NOT NULL, Email VARCHAR(100), Website VARCHAR(75), Phone_Number VARCHAR(20) NOT NULL);";
         createTableStatement.executeUpdate(createTableQuery);
     }
 
@@ -278,6 +278,10 @@ public class application {
 
         java.util.List<String> namelist = new ArrayList<>();
 
+        JTextField billingAddtext = new JTextField();
+
+        JTextField shippingAddtext = new JTextField();
+
         companytext.addItem("Select:");
 
         nametext.addItem("Select:");
@@ -310,16 +314,27 @@ public class application {
                 try{
                     
                     String companyquery = "";
+                    String addressquery = "";
+                    String addressTemp = "";
                     if(companytext.getSelectedItem()=="" || companytext.getSelectedItem()==null){
                         companyquery = "SELECT DISTINCT Customer_Name FROM customers";
                     } else{
                         companyquery = "SELECT DISTINCT Customer_Name FROM customers WHERE Customer_Company = '" + companytext.getSelectedItem() + "'";
+                        addressquery = "SELECT Address from customers WHERE Customer_Company = '" + companytext.getSelectedItem() + "'";
                     }
                     Statement statement = connection.createStatement();
                     ResultSet resultSet = statement.executeQuery(companyquery);
                     while(resultSet.next()){
                         namelist2.add(resultSet.getString("Customer_Name"));
                     }
+
+                    ResultSet addressResult = statement.executeQuery(addressquery);
+                    while (addressResult.next()) {
+                        addressTemp = addressResult.getString("Address");
+                    }
+
+                    billingAddtext.setText(addressTemp);
+                    shippingAddtext.setText(addressTemp);
 
                 } catch(SQLException e){
                     e.printStackTrace();
@@ -338,8 +353,8 @@ public class application {
         companytext.setForeground(new Color(0x000099));
 
         JScrollPane companyscroll = new JScrollPane(companytext);
-        companyscroll.setPreferredSize(new Dimension(210, 45));
-        companyscroll.setBounds(245, 100, 210, 45);
+        companyscroll.setPreferredSize(new Dimension(400, 45));
+        companyscroll.setBounds(245, 100, 400, 45);
 
         JLabel name = new JLabel("Customer Name:");
         name.setForeground(new Color(0x293dff));
@@ -372,8 +387,35 @@ public class application {
         nametext.setForeground(new Color(0x000099));
 
         JScrollPane namescroll = new JScrollPane(nametext);
-        namescroll.setPreferredSize(new Dimension(210, 45));
-        namescroll.setBounds(215, 160, 210, 45);
+        namescroll.setPreferredSize(new Dimension(400, 45));
+        namescroll.setBounds(215, 160, 400, 45);
+
+        JLabel billingAdd = new JLabel("Billing Address:");
+        billingAdd.setForeground(new Color(0x293dff));
+        billingAdd.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        billingAdd.setVerticalAlignment(JLabel.CENTER);
+        billingAdd.setHorizontalAlignment(JLabel.LEFT);
+        billingAdd.setBounds(50, 220, 145, 35);
+
+        billingAddtext.setBackground(new Color(0x99ccff));
+        billingAddtext.setForeground(new Color(0x000099));
+        billingAddtext.setCaretColor(new Color(0x000099));
+        billingAddtext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        billingAddtext.setEditable(false);
+        billingAddtext.setBounds(205, 220, 500, 35);
+
+        JLabel shippingAdd = new JLabel("Shipping Address:");
+        shippingAdd.setForeground(new Color(0x293dff));
+        shippingAdd.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        shippingAdd.setVerticalAlignment(JLabel.CENTER);
+        shippingAdd.setHorizontalAlignment(JLabel.LEFT);
+        shippingAdd.setBounds(50, 270, 165, 35);
+
+        shippingAddtext.setBackground(new Color(0x99ccff));
+        shippingAddtext.setForeground(new Color(0x000099));
+        shippingAddtext.setCaretColor(new Color(0x000099));
+        shippingAddtext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        shippingAddtext.setBounds(225, 270, 500, 35);
 
         DefaultTableModel tableModel = new DefaultTableModel();
         tableModel.addColumn("Item Name");
@@ -386,28 +428,28 @@ public class application {
         orderTable.setBackground(new Color(0x99ccff));
 
         JScrollPane tableScrollPane = new JScrollPane(orderTable);
-        tableScrollPane.setBounds(50, 265, 1000, 400);
+        tableScrollPane.setBounds(50, 365, 1000, 400);
 
         JLabel paymentmethod = new JLabel("Payment Method:");
         paymentmethod.setForeground(new Color(0x293dff));
         paymentmethod.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         paymentmethod.setVerticalAlignment(JLabel.CENTER);
         paymentmethod.setHorizontalAlignment(JLabel.LEFT);
-        paymentmethod.setBounds(50, 685, 165, 35);
+        paymentmethod.setBounds(50, 785, 165, 35);
 
         JTextField paymentmethodtext = new JTextField();
         paymentmethodtext.setBackground(new Color(0x99ccff));
         paymentmethodtext.setForeground(new Color(0x000099));
         paymentmethodtext.setCaretColor(new Color(0x000099));
         paymentmethodtext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
-        paymentmethodtext.setBounds(225, 685, 200, 35);
+        paymentmethodtext.setBounds(225, 785, 200, 35);
 
         JLabel paymentstatus = new JLabel("Payment Status:");
         paymentstatus.setForeground(new Color(0x293dff));
         paymentstatus.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         paymentstatus.setVerticalAlignment(JLabel.CENTER);
         paymentstatus.setHorizontalAlignment(JLabel.LEFT);
-        paymentstatus.setBounds(460, 685, 155, 35);
+        paymentstatus.setBounds(460, 785, 155, 35);
 
         JComboBox<String> paymentstatustext = new JComboBox<>();
         paymentstatustext.addItem("Pending");
@@ -416,14 +458,14 @@ public class application {
         paymentstatustext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         paymentstatustext.setBackground(new Color(0x99ccff));
         paymentstatustext.setForeground(new Color(0x000099));
-        paymentstatustext.setBounds(625, 685, 200, 35);
+        paymentstatustext.setBounds(625, 785, 200, 35);
 
         JLabel tax = new JLabel("Tax Percentage:");
         tax.setForeground(new Color(0x293dff));
         tax.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         tax.setVerticalAlignment(JLabel.CENTER);
         tax.setHorizontalAlignment(JLabel.LEFT);
-        tax.setBounds(50, 220, 152, 35);
+        tax.setBounds(50, 320, 152, 35);
 
         JComboBox<Integer> taxtext = new JComboBox<>();
         taxtext.addItem(5);
@@ -433,7 +475,7 @@ public class application {
         taxtext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         taxtext.setBackground(new Color(0x99ccff));
         taxtext.setForeground(new Color(0x000099));
-        taxtext.setBounds(212, 220, 70, 35);
+        taxtext.setBounds(212, 320, 70, 35);
 
         taxtext.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e){
@@ -487,6 +529,15 @@ public class application {
                     while(itemsResultSet.next()){
                         tableModel.addRow(new Object[]{itemsResultSet.getString("Item_Name"), itemsResultSet.getInt("Quantity"), itemsResultSet.getFloat("Rate"), itemsResultSet.getFloat("Price"), (float)itemsResultSet.getFloat("Price")*(int)taxtext.getSelectedItem()/100});
                     }
+
+                    String addressTemp = "";
+                    String addressquery = "SELECT Address from customers, orders WHERE orders.Order_Id = " + orderidtext.getText() + " AND orders.Customer_Id = customers.Customer_Id";
+                    ResultSet addressResult = statement.executeQuery(addressquery);
+                    while (addressResult.next()) {
+                        addressTemp = addressResult.getString("Address");
+                    }
+                    billingAddtext.setText(addressTemp);
+                    shippingAddtext.setText(addressTemp);
 
                 }catch(SQLException e1){
                     e1.printStackTrace();
@@ -553,12 +604,21 @@ public class application {
                     paymentmethodtext.setText(payment_meth);
                     paymentstatustext.setSelectedItem(payment_stat);
 
-                    String items = "SELECT Item_Name, Quantity, Rate, Quantity*Rate AS Price FROM items WHERE Order_Id = " + orderidtext.getText();
+                    String items = "SELECT Item_Name, Quantity, Rate, Quantity*Rate AS Price FROM items, item_stock WHERE items.Item_Id = item_stock.Item_Id and Order_Id = " + orderidtext.getText();
                     ResultSet itemsResultSet = statement.executeQuery(items);
                     tableModel.setRowCount(0);
                     while(itemsResultSet.next()){
                         tableModel.addRow(new Object[]{itemsResultSet.getString("Item_Name"), itemsResultSet.getInt("Quantity"), itemsResultSet.getFloat("Rate"), itemsResultSet.getFloat("Price"), (float)itemsResultSet.getFloat("Price")*(int)taxtext.getSelectedItem()/100});
                     }
+
+                    String addressTemp = "";
+                    String addressquery = "SELECT Address from customers, bills WHERE bills.Bill_Id = " + billidtext.getText() + " AND bills.Customer_Id = customers.Customer_Id";
+                    ResultSet addressResult = statement.executeQuery(addressquery);
+                    while (addressResult.next()) {
+                        addressTemp = addressResult.getString("Address");
+                    }
+                    billingAddtext.setText(addressTemp);
+                    shippingAddtext.setText(addressTemp);
 
                 }catch(SQLException e1){
                     e1.printStackTrace();
@@ -584,11 +644,12 @@ public class application {
                 java.util.Date selectedTime = (Date) timeSpinner.getValue();
                 Object companyname = companytext.getSelectedItem();
                 Object customername = nametext.getSelectedItem();
+                String shippingAddress = shippingAddtext.getText();
                 String paymethod = paymentmethodtext.getText();
                 Object paystatus = paymentstatustext.getSelectedItem();
                 Object taxperc = taxtext.getSelectedItem();
 
-                if(billidtext.getText().length()!=0 && selecteddate!=null && selectedTime!=null && companyname!=null && customername!=null && paymethod!=null && paystatus!=null && taxperc!=null && companyname!="" && customername!="" && paymethod!="" && paystatus!="" && taxperc!="" && paymethod.length()!=0){
+                if(billidtext.getText().length()!=0 && shippingAddress.length()!=0 && shippingAddress!=null && selecteddate!=null && selectedTime!=null && companyname!=null && customername!=null && paymethod!=null && paystatus!=null && taxperc!=null && companyname!="" && customername!="" && shippingAddress!="" && paymethod!="" && paystatus!="" && taxperc!="" && paymethod.length()!=0){
 
                     try{
 
@@ -603,7 +664,16 @@ public class application {
                         String insertOrderQuery = "UPDATE orders SET Order_Status = 'Complete' WHERE Order_Id = " + order_id;
                         statement.execute(insertOrderQuery);
 
-                        String insertBillQuery = "UPDATE bills SET Date ='" + java.sql.Date.valueOf(formattedDate) + "', Time = '" + java.sql.Time.valueOf(formattedTime) + "', Customer_Name = '" + customername + "', Customer_Company = '" + companyname + "', tax_percentage = " + taxperc + " WHERE Bill_Id = " + billidtext.getText();
+                        int Temp = 0;
+                        String customerIdQuery = "SELECT * from customers WHERE Customer_Name = '" + customername + "' AND Customer_Company = '" + companyname + "'";
+                        ResultSet customerIdResult = statement.executeQuery(customerIdQuery);
+                        Temp = 0;
+                        while (customerIdResult.next()) {
+                            Temp = customerIdResult.getInt("Customer_Id");     
+                        }
+                        int customerId = Temp;
+
+                        String insertBillQuery = "UPDATE bills SET Order_Id =" + order_id + ", Date ='" + java.sql.Date.valueOf(formattedDate) + "', Time = '" + java.sql.Time.valueOf(formattedTime) + "', Customer_Id = '" + customerId + "', Shipping_Address = '" + shippingAddress + "', tax_percentage = " + taxperc + " WHERE Bill_Id = " + billidtext.getText();
                         statement.execute(insertBillQuery);
 
                         String insertPaymentQuery = "UPDATE payments set Payment_Method = '" + paymethod + "', Payment_Status = '" + paystatus + "' WHERE Bill_Id = " + billidtext.getText();
@@ -636,6 +706,10 @@ public class application {
         frame.add(companyscroll);
         frame.add(name);
         frame.add(namescroll);
+        frame.add(billingAdd);
+        frame.add(billingAddtext);
+        frame.add(shippingAdd);
+        frame.add(shippingAddtext);
         frame.add(tableScrollPane);
         frame.add(paymentmethod);
         frame.add(paymentmethodtext);
@@ -751,8 +825,8 @@ public class application {
         companytext.setForeground(new Color(0x000099));
 
         JScrollPane companyscroll = new JScrollPane(companytext);
-        companyscroll.setPreferredSize(new Dimension(210, 45));
-        companyscroll.setBounds(245, 100, 210, 45);
+        companyscroll.setPreferredSize(new Dimension(400, 45));
+        companyscroll.setBounds(245, 100, 400, 45);
 
         JLabel name = new JLabel("Customer Name:");
         name.setForeground(new Color(0x293dff));
@@ -785,8 +859,8 @@ public class application {
         nametext.setForeground(new Color(0x000099));
 
         JScrollPane namescroll = new JScrollPane(nametext);
-        namescroll.setPreferredSize(new Dimension(210, 45));
-        namescroll.setBounds(215, 160, 210, 45);
+        namescroll.setPreferredSize(new Dimension(400, 45));
+        namescroll.setBounds(215, 160, 400, 45);
 
         DefaultTableModel model1 = new DefaultTableModel();
         model1.addColumn("Item Name");
@@ -915,12 +989,12 @@ public class application {
                     paymentmethodtext.setText(paymethod);
                     paymentstatustext.setSelectedItem(paystatus);
 
-                    String searchquery1 = "select Order_Id, Item_Name, Quantity, Rate from items WHERE Order_Id = " + orderidtext.getText();
+                    String searchquery1 = "select Order_Id, Item_Name, Quantity, Rate from items, item_stock WHERE items.Item_Id = item_stock.Item_Id and Order_Id = " + orderidtext.getText();
 
                     Statement statementselect = connection.createStatement();
                     ResultSet resultsetselect = statementselect.executeQuery(searchquery1);
                     while(resultsetselect.next()){
-                        Object[] row = new Object[4];
+                        Object[] row = new Object[3];
                         row[0]=resultsetselect.getObject("Item_Name");
                         row[1]=resultsetselect.getObject("Quantity");
                         row[2]=resultsetselect.getObject("Rate");
@@ -955,7 +1029,7 @@ public class application {
                 Object ordstatus = orderstatustext.getSelectedItem();
                 int customerid;
 
-                if(orderidtext.getText().length()!=0 && selecteddate!=null && companyname!=null && customername!=null && paymethod!=null && paystatus!=null && ordstatus!=null && companyname!="" && customername!="" && paymethod!="" && paystatus!="" && ordstatus!="" && paymethod.length()!=0){
+                if(orderidtext.getText().length()!=0 && selecteddate!=null && companyname!=null && customername!=null && paymethod!=null && paystatus!=null && ordstatus!=null && companyname!="" && customername!="" && paymethod!="" && paystatus!="" && ordstatus!="" && paymethod.length()!=0 && model1.getRowCount()!=0){
 
                     try{
 
@@ -984,14 +1058,13 @@ public class application {
                             resultSet2.next();
                             int itemid = resultSet2.getInt("Item_Id");
 
-                            String insertItem = "INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)";
+                            String insertItem = "INSERT INTO items VALUES (?, ?, ?, ?, ?)";
                             PreparedStatement itemstatement = connection.prepareStatement(insertItem);
                             itemstatement.setObject(1, orderidtext.getText());
                             itemstatement.setNull(2, java.sql.Types.NULL);
                             itemstatement.setInt(3, itemid);
-                            itemstatement.setString(4, (String)cellname);
-                            itemstatement.setObject(5, cellquantity);
-                            itemstatement.setObject(6, cellrate);
+                            itemstatement.setObject(4, cellquantity);
+                            itemstatement.setObject(5, cellrate);
                             itemstatement.executeUpdate();
                         }
 
@@ -1269,7 +1342,7 @@ public class application {
         date.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         date.setVerticalAlignment(JLabel.CENTER);
         date.setHorizontalAlignment(JLabel.LEFT);
-        date.setBounds(270, 50, 50, 35);
+        date.setBounds(471, 50, 50, 35);
 
         JDateChooser dateentry = new JDateChooser();
         dateentry.setDateFormatString("yyyy-MM-dd");
@@ -1279,14 +1352,14 @@ public class application {
         datetext.setForeground(new Color(0x000099));
         datetext.setCaretColor(new Color(0x000099));
 
-        dateentry.setBounds(330, 50, 150, 35);
+        dateentry.setBounds(531, 50, 150, 35);
 
         JLabel time = new JLabel("Time:");
         time.setForeground(new Color(0x293dff));
         time.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         time.setVerticalAlignment(JLabel.CENTER);
         time.setHorizontalAlignment(JLabel.LEFT);
-        time.setBounds(490, 50, 50, 35);
+        time.setBounds(691, 50, 50, 35);
 
         SpinnerDateModel timeModel = new SpinnerDateModel();
         JSpinner timeSpinner = new JSpinner(timeModel);
@@ -1295,7 +1368,7 @@ public class application {
         timeSpinner.setBackground(new Color(0x99ccff));
         timeSpinner.setForeground(new Color(0x000099));
         timeSpinner.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
-        timeSpinner.setBounds(550, 50, 150, 35);
+        timeSpinner.setBounds(751, 50, 150, 35);
 
         JLabel company = new JLabel("Customer Company:");
         company.setForeground(new Color(0x293dff));
@@ -1311,6 +1384,10 @@ public class application {
         java.util.List<String> companylist = new ArrayList<>();
 
         java.util.List<String> namelist = new ArrayList<>();
+
+        JTextField billingAddtext = new JTextField();
+
+        JTextField shippingAddtext = new JTextField();
 
         companytext.addItem("Select:");
 
@@ -1344,16 +1421,26 @@ public class application {
                 try{
                     
                     String companyquery = "";
+                    String addressquery = "";
+                    String addressTemp = "";
                     if(companytext.getSelectedItem()=="" || companytext.getSelectedItem()==null){
                         companyquery = "SELECT DISTINCT Customer_Name FROM customers";
                     } else{
                         companyquery = "SELECT DISTINCT Customer_Name FROM customers WHERE Customer_Company = '" + companytext.getSelectedItem() + "'";
+                        addressquery = "SELECT Address from customers WHERE Customer_Company = '" + companytext.getSelectedItem() + "'";
                     }
                     Statement statement = connection.createStatement();
                     ResultSet resultSet = statement.executeQuery(companyquery);
                     while(resultSet.next()){
                         namelist2.add(resultSet.getString("Customer_Name"));
                     }
+                    ResultSet addressResult = statement.executeQuery(addressquery);
+                    while (addressResult.next()) {
+                        addressTemp = addressResult.getString("Address");
+                    }
+
+                    billingAddtext.setText(addressTemp);
+                    shippingAddtext.setText(addressTemp);
 
                 } catch(SQLException e){
                     e.printStackTrace();
@@ -1372,8 +1459,8 @@ public class application {
         companytext.setForeground(new Color(0x000099));
 
         JScrollPane companyscroll = new JScrollPane(companytext);
-        companyscroll.setPreferredSize(new Dimension(210, 45));
-        companyscroll.setBounds(245, 100, 210, 45);
+        companyscroll.setPreferredSize(new Dimension(400, 45));
+        companyscroll.setBounds(245, 100, 400, 45);
 
         JLabel name = new JLabel("Customer Name:");
         name.setForeground(new Color(0x293dff));
@@ -1406,8 +1493,35 @@ public class application {
         nametext.setForeground(new Color(0x000099));
 
         JScrollPane namescroll = new JScrollPane(nametext);
-        namescroll.setPreferredSize(new Dimension(210, 45));
-        namescroll.setBounds(215, 160, 210, 45);
+        namescroll.setPreferredSize(new Dimension(400, 45));
+        namescroll.setBounds(215, 160, 400, 45);
+
+        JLabel billingAdd = new JLabel("Billing Address:");
+        billingAdd.setForeground(new Color(0x293dff));
+        billingAdd.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        billingAdd.setVerticalAlignment(JLabel.CENTER);
+        billingAdd.setHorizontalAlignment(JLabel.LEFT);
+        billingAdd.setBounds(50, 220, 145, 35);
+
+        billingAddtext.setBackground(new Color(0x99ccff));
+        billingAddtext.setForeground(new Color(0x000099));
+        billingAddtext.setCaretColor(new Color(0x000099));
+        billingAddtext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        billingAddtext.setEditable(false);
+        billingAddtext.setBounds(205, 220, 500, 35);
+
+        JLabel shippingAdd = new JLabel("Shipping Address:");
+        shippingAdd.setForeground(new Color(0x293dff));
+        shippingAdd.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        shippingAdd.setVerticalAlignment(JLabel.CENTER);
+        shippingAdd.setHorizontalAlignment(JLabel.LEFT);
+        shippingAdd.setBounds(50, 270, 165, 35);
+
+        shippingAddtext.setBackground(new Color(0x99ccff));
+        shippingAddtext.setForeground(new Color(0x000099));
+        shippingAddtext.setCaretColor(new Color(0x000099));
+        shippingAddtext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        shippingAddtext.setBounds(225, 270, 500, 35);
 
         DefaultTableModel tableModel = new DefaultTableModel();
         tableModel.addColumn("Item Name");
@@ -1420,28 +1534,28 @@ public class application {
         orderTable.setBackground(new Color(0x99ccff));
 
         JScrollPane tableScrollPane = new JScrollPane(orderTable);
-        tableScrollPane.setBounds(50, 265, 1000, 400);
+        tableScrollPane.setBounds(50, 365, 1000, 400);
 
         JLabel paymentmethod = new JLabel("Payment Method:");
         paymentmethod.setForeground(new Color(0x293dff));
         paymentmethod.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         paymentmethod.setVerticalAlignment(JLabel.CENTER);
         paymentmethod.setHorizontalAlignment(JLabel.LEFT);
-        paymentmethod.setBounds(50, 685, 165, 35);
+        paymentmethod.setBounds(50, 785, 165, 35);
 
         JTextField paymentmethodtext = new JTextField();
         paymentmethodtext.setBackground(new Color(0x99ccff));
         paymentmethodtext.setForeground(new Color(0x000099));
         paymentmethodtext.setCaretColor(new Color(0x000099));
         paymentmethodtext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
-        paymentmethodtext.setBounds(225, 685, 200, 35);
+        paymentmethodtext.setBounds(225, 785, 200, 35);
 
         JLabel paymentstatus = new JLabel("Payment Status:");
         paymentstatus.setForeground(new Color(0x293dff));
         paymentstatus.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         paymentstatus.setVerticalAlignment(JLabel.CENTER);
         paymentstatus.setHorizontalAlignment(JLabel.LEFT);
-        paymentstatus.setBounds(460, 685, 155, 35);
+        paymentstatus.setBounds(460, 785, 155, 35);
 
         JComboBox<String> paymentstatustext = new JComboBox<>();
         paymentstatustext.addItem("Pending");
@@ -1450,14 +1564,14 @@ public class application {
         paymentstatustext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         paymentstatustext.setBackground(new Color(0x99ccff));
         paymentstatustext.setForeground(new Color(0x000099));
-        paymentstatustext.setBounds(625, 685, 200, 35);
+        paymentstatustext.setBounds(625, 785, 200, 35);
 
         JLabel tax = new JLabel("Tax Percentage:");
         tax.setForeground(new Color(0x293dff));
         tax.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         tax.setVerticalAlignment(JLabel.CENTER);
         tax.setHorizontalAlignment(JLabel.LEFT);
-        tax.setBounds(50, 220, 152, 35);
+        tax.setBounds(50, 320, 152, 35);
 
         JComboBox<Integer> taxtext = new JComboBox<>();
         taxtext.addItem(5);
@@ -1467,7 +1581,7 @@ public class application {
         taxtext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         taxtext.setBackground(new Color(0x99ccff));
         taxtext.setForeground(new Color(0x000099));
-        taxtext.setBounds(212, 220, 70, 35);
+        taxtext.setBounds(212, 320, 70, 35);
 
         taxtext.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e){
@@ -1483,7 +1597,7 @@ public class application {
         orderid.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         orderid.setVerticalAlignment(JLabel.CENTER);
         orderid.setHorizontalAlignment(JLabel.LEFT);
-        orderid.setBounds(50, 50, 85, 35);
+        orderid.setBounds(251, 50, 85, 35);
 
         JComboBox<Integer> orderidtext = new JComboBox<>();
 
@@ -1536,12 +1650,21 @@ public class application {
                     paymentmethodtext.setText(payment_meth);
                     paymentstatustext.setSelectedItem(payment_stat);
 
-                    String items = "SELECT Item_Name, Quantity, Rate, Quantity*Rate AS Price FROM items WHERE Order_Id = " + orderidtext.getSelectedItem();
+                    String items = "SELECT Item_Name, Quantity, Rate, Quantity*Rate AS Price FROM items, item_stock WHERE items.Item_Id = item_stock.Item_Id and Order_Id = " + orderidtext.getSelectedItem();
                     ResultSet itemsResultSet = statement.executeQuery(items);
                     tableModel.setRowCount(0);
                     while(itemsResultSet.next()){
                         tableModel.addRow(new Object[]{itemsResultSet.getString("Item_Name"), itemsResultSet.getInt("Quantity"), itemsResultSet.getFloat("Rate"), itemsResultSet.getFloat("Price"), (float)itemsResultSet.getFloat("Price")*(int)taxtext.getSelectedItem()/100});
                     }
+
+                    String addressTemp = "";
+                    String addressquery = "SELECT Address from customers, orders WHERE orders.Order_Id = " + orderidtext.getSelectedItem() + " AND orders.Customer_Id = customers.Customer_Id";
+                    ResultSet addressResult = statement.executeQuery(addressquery);
+                    while (addressResult.next()) {
+                        addressTemp = addressResult.getString("Address");
+                    }
+                    billingAddtext.setText(addressTemp);
+                    shippingAddtext.setText(addressTemp);
 
                 }catch(SQLException e1){
                     e1.printStackTrace();
@@ -1557,26 +1680,59 @@ public class application {
 
         JScrollPane orderidscroll = new JScrollPane(orderidtext);
         orderidscroll.setPreferredSize(new Dimension(210, 45));
-        orderidscroll.setBounds(145, 45, 100, 45);
+        orderidscroll.setBounds(346, 45, 100, 45);
+
+        JLabel billid = new JLabel("Bill ID:");
+        billid.setForeground(new Color(0x293dff));
+        billid.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        billid.setVerticalAlignment(JLabel.CENTER);
+        billid.setHorizontalAlignment(JLabel.LEFT);
+        billid.setBounds(50, 50, 83, 35);
+
+        int billno = 0;
+        try{
+            Statement statement = connection.createStatement();
+            String billquery = "SELECT * FROM bills";
+            ResultSet billresult = statement.executeQuery(billquery);
+            while (billresult.next()) {
+                billno = billresult.getInt("Bill_Id");
+            }
+
+        }catch(SQLException e1){
+            e1.printStackTrace();
+        }catch(Exception e2){
+            e2.printStackTrace();
+        }
+        billno+=1;
+
+        JTextField billidtext = new JTextField();
+        billidtext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        billidtext.setBackground(new Color(0x99ccff));
+        billidtext.setForeground(new Color(0x000099));
+        billidtext.setCaretColor(new Color(0x000099));
+        billidtext.setText(String.valueOf(billno));
+        billidtext.setBounds(143, 50, 83, 35);
 
         JButton addorderbutton = new JButton("Create Bill");
         addorderbutton.setFocusable(false);
         addorderbutton.setFont(new Font("Haettenschweiler", Font.PLAIN, 25));
         addorderbutton.setBackground(new Color(0x4c73ff));
         addorderbutton.setForeground(new Color(0x000099));
-        addorderbutton.setBounds(1060, 780, 130, 35);
+        addorderbutton.setBounds(1060, 880, 130, 35);
         addorderbutton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e){
+                Object billId = billidtext.getText();
                 Object order_id = orderidtext.getSelectedItem();
                 java.util.Date selecteddate = dateentry.getDate();
                 java.util.Date selectedTime = (Date) timeSpinner.getValue();
                 Object companyname = companytext.getSelectedItem();
                 Object customername = nametext.getSelectedItem();
+                Object shippingAddress = shippingAddtext.getText();
                 String paymethod = paymentmethodtext.getText();
                 Object paystatus = paymentstatustext.getSelectedItem();
                 Object taxperc = taxtext.getSelectedItem();
 
-                if(selecteddate!=null && selectedTime!=null && companyname!=null && customername!=null && paymethod!=null && paystatus!=null && taxperc!=null && companyname!="" && customername!="" && paymethod!="" && paystatus!="" && taxperc!="" && paymethod.length()!=0){
+                if(billId!=null && selecteddate!=null && selectedTime!=null && companyname!=null && customername!=null && paymethod!=null && paystatus!=null && taxperc!=null && billId!="" && companyname!="" && customername!="" && paymethod!="" && paystatus!="" && taxperc!="" && paymethod.length()!=0){
 
                     try{
 
@@ -1591,22 +1747,26 @@ public class application {
                         String insertOrderQuery = "UPDATE orders SET Order_Status = 'Complete' WHERE Order_Id = " + order_id;
                         statement.execute(insertOrderQuery);
 
-                        String insertBillQuery = "INSERT INTO bills (Order_Id, Date, Time, Customer_Name, Customer_Company, tax_percentage, User_Name) VALUES (?, ?, ?, ?, ?, ?, ?)";
-                        PreparedStatement billStatement = connection.prepareStatement(insertBillQuery);
-                        billStatement.setInt(1, (int)order_id);
-                        billStatement.setDate(2, java.sql.Date.valueOf(formattedDate));
-                        billStatement.setTime(3, java.sql.Time.valueOf(formattedTime));
-                        billStatement.setObject(4, customername);
-                        billStatement.setObject(5, companyname);
-                        billStatement.setObject(6, taxperc);
-                        billStatement.setString(7, username);
-                        billStatement.executeUpdate();
+                        int Temp = 0;
+                        String customerIdQuery = "SELECT * from customers WHERE Customer_Name = '" + customername + "' AND Customer_Company = '" + companyname + "'";
+                        ResultSet customerIdResult = statement.executeQuery(customerIdQuery);
+                        Temp = 0;
+                        while (customerIdResult.next()) {
+                            Temp = customerIdResult.getInt("Customer_Id");     
+                        }
+                        int customerId = Temp;
 
-                        String getLastBillQuery = "SELECT LAST_INSERT_ID()";
-                        Statement getLastBillStatement = connection.createStatement();
-                        ResultSet lastBillIdResult = getLastBillStatement.executeQuery(getLastBillQuery);
-                        lastBillIdResult.next();
-                        int billId = lastBillIdResult.getInt(1);
+                        String insertBillQuery = "INSERT INTO bills VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                        PreparedStatement billStatement = connection.prepareStatement(insertBillQuery);
+                        billStatement.setObject(1, billId);
+                        billStatement.setInt(2, (int)order_id);
+                        billStatement.setDate(3, java.sql.Date.valueOf(formattedDate));
+                        billStatement.setTime(4, java.sql.Time.valueOf(formattedTime));
+                        billStatement.setInt(5, customerId);
+                        billStatement.setObject(6, shippingAddress);
+                        billStatement.setObject(7, taxperc);
+                        billStatement.setString(8, username);
+                        billStatement.executeUpdate();
 
                         String insertPaymentQuery = "UPDATE payments set Bill_Id = " + billId + ", Payment_Method = '" + paymethod + "', Payment_Status = '" + paystatus + "' WHERE Order_Id = " + order_id;
                         statement.execute(insertPaymentQuery);
@@ -1641,6 +1801,8 @@ public class application {
             }
         });
 
+        frame.add(billid);
+        frame.add(billidtext);
         frame.add(orderid);
         frame.add(orderidscroll);
         frame.add(date);
@@ -1651,6 +1813,10 @@ public class application {
         frame.add(companyscroll);
         frame.add(name);
         frame.add(namescroll);
+        frame.add(billingAdd);
+        frame.add(billingAddtext);
+        frame.add(shippingAdd);
+        frame.add(shippingAddtext);
         frame.add(tableScrollPane);
         frame.add(paymentmethod);
         frame.add(paymentmethodtext);
@@ -1766,8 +1932,8 @@ public class application {
         companytext.setForeground(new Color(0x000099));
 
         JScrollPane companyscroll = new JScrollPane(companytext);
-        companyscroll.setPreferredSize(new Dimension(210, 45));
-        companyscroll.setBounds(245, 100, 210, 45);
+        companyscroll.setPreferredSize(new Dimension(400, 45));
+        companyscroll.setBounds(245, 100, 400, 45);
 
         JLabel name = new JLabel("Customer Name:");
         name.setForeground(new Color(0x293dff));
@@ -1800,8 +1966,8 @@ public class application {
         nametext.setForeground(new Color(0x000099));
 
         JScrollPane namescroll = new JScrollPane(nametext);
-        namescroll.setPreferredSize(new Dimension(210, 45));
-        namescroll.setBounds(215, 160, 210, 45);
+        namescroll.setPreferredSize(new Dimension(400, 45));
+        namescroll.setBounds(215, 160, 400, 45);
 
         DefaultTableModel tableModel = new DefaultTableModel();
         tableModel.addColumn("Item Name");
@@ -1891,7 +2057,7 @@ public class application {
                 Object ordstatus = orderstatustext.getSelectedItem();
                 int customerid;
 
-                if(selecteddate!=null && companyname!=null && customername!=null && paymethod!=null && paystatus!=null && ordstatus!=null && companyname!="" && customername!="" && paymethod!="" && paystatus!="" && ordstatus!="" && paymethod.length()!=0){
+                if(selecteddate!=null && companyname!=null && customername!=null && paymethod!=null && paystatus!=null && ordstatus!=null && companyname!="" && customername!="" && paymethod!="" && paystatus!="" && ordstatus!="" && paymethod.length()!=0 && tableModel.getRowCount()!=0){
 
                     try{
 
@@ -1932,14 +2098,13 @@ public class application {
                             resultSet2.next();
                             int itemid = resultSet2.getInt("Item_Id");
 
-                            String insertItem = "INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)";
+                            String insertItem = "INSERT INTO items VALUES (?, ?, ?, ?, ?)";
                             PreparedStatement itemstatement = connection.prepareStatement(insertItem);
                             itemstatement.setInt(1, orderId);
                             itemstatement.setNull(2, java.sql.Types.NULL);
                             itemstatement.setInt(3, itemid);
-                            itemstatement.setString(4, (String)cellname);
-                            itemstatement.setObject(5, cellquantity);
-                            itemstatement.setObject(6, cellrate);
+                            itemstatement.setObject(4, cellquantity);
+                            itemstatement.setObject(5, cellrate);
                             itemstatement.executeUpdate();
                         }
 
@@ -2016,76 +2181,93 @@ public class application {
         companytext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         companytext.setBounds(790, 105, 300, 35);
 
+        JLabel gstin = new JLabel("GSTIN:");
+        gstin.setForeground(new Color(0x293dff));
+        gstin.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        gstin.setVerticalAlignment(JLabel.CENTER);
+        gstin.setHorizontalAlignment(JLabel.LEFT);
+        gstin.setBounds(630, 150, 150, 35);
+
+        JTextField gstintext = new JTextField();
+        gstintext.setBackground(new Color(0x99ccff));
+        gstintext.setForeground(new Color(0x000099));
+        gstintext.setCaretColor(new Color(0x000099));
+        gstintext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
+        gstintext.setBounds(790, 150, 300, 35);
+
         JLabel phone = new JLabel("Phone Number:");
         phone.setForeground(new Color(0x293dff));
         phone.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         phone.setVerticalAlignment(JLabel.CENTER);
         phone.setHorizontalAlignment(JLabel.LEFT);
-        phone.setBounds(630, 150, 150, 35);
+        phone.setBounds(630, 195, 150, 35);
 
         JTextField phonetext = new JTextField();
         phonetext.setBackground(new Color(0x99ccff));
         phonetext.setForeground(new Color(0x000099));
         phonetext.setCaretColor(new Color(0x000099));
         phonetext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
-        phonetext.setBounds(790, 150, 300, 35);
+        phonetext.setBounds(790, 195, 300, 35);
 
         JLabel email = new JLabel("Email:");
         email.setForeground(new Color(0x293dff));
         email.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         email.setVerticalAlignment(JLabel.CENTER);
         email.setHorizontalAlignment(JLabel.LEFT);
-        email.setBounds(630, 195, 150, 35);
+        email.setBounds(630, 240, 150, 35);
 
         JTextField emailtext = new JTextField();
         emailtext.setBackground(new Color(0x99ccff));
         emailtext.setForeground(new Color(0x000099));
         emailtext.setCaretColor(new Color(0x000099));
         emailtext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
-        emailtext.setBounds(790, 195, 300, 35);
+        emailtext.setBounds(790, 240, 300, 35);
 
         JLabel address = new JLabel("Address:");
         address.setForeground(new Color(0x293dff));
         address.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
         address.setVerticalAlignment(JLabel.CENTER);
         address.setHorizontalAlignment(JLabel.LEFT);
-        address.setBounds(630, 240, 150, 35);
+        address.setBounds(630, 285, 150, 35);
 
         JTextField addresstext = new JTextField();
         addresstext.setBackground(new Color(0x99ccff));
         addresstext.setForeground(new Color(0x000099));
         addresstext.setCaretColor(new Color(0x000099));
         addresstext.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
-        addresstext.setBounds(790, 240, 300, 35);
+        addresstext.setBounds(790, 285, 300, 35);
 
         JButton addbutton = new JButton("Add Customer");
         addbutton.setFocusable(false);
         addbutton.setBackground(new Color(0x4c73ff));
         addbutton.setForeground(new Color(0x000099));
         addbutton.setFont(new Font("Haettenschweiler", Font.PLAIN, 30));
-        addbutton.setBounds(760, 335, 170, 35);
+        addbutton.setBounds(760, 380, 170, 35);
         addbutton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e){
 
                 String namevar = nametext.getText();
                 String companyvar = companytext.getText();
+                String gstinvar = gstintext.getText();
                 String phonevar = phonetext.getText();
                 String emailvar = emailtext.getText();
                 String addressvar = addresstext.getText();
 
                 if(namevar.length()!=0 && companyvar.length()!=0 && phonevar.length()!=0 && emailvar.length()!=0 && addressvar.length()!=0){
                     try{
-                        String query = "INSERT INTO customers (Customer_Name, Customer_Company, Phone_Number, Email, Address) values (?, ?, ?, ?, ?)";
+                        String query = "INSERT INTO customers (Customer_Name, Customer_Company, GSTIN, Phone_Number, Email, Address) values (?, ?, ?, ?, ?, ?)";
                         PreparedStatement insertquery = connection.prepareStatement(query);
                         insertquery.setString(1, namevar);
                         insertquery.setString(2, companyvar);
-                        insertquery.setString(3, phonevar);
-                        insertquery.setString(4, emailvar);
-                        insertquery.setString(5, addressvar);
+                        insertquery.setString(3, gstinvar);
+                        insertquery.setString(4, phonevar);
+                        insertquery.setString(5, emailvar);
+                        insertquery.setString(6, addressvar);
                         insertquery.executeUpdate();
                         JOptionPane.showMessageDialog(null, "Customer Added", "Information", JOptionPane.INFORMATION_MESSAGE);
                         nametext.setText("");
                         companytext.setText("");
+                        gstintext.setText("");
                         phonetext.setText("");
                         emailtext.setText("");
                         addresstext.setText("");
@@ -2104,6 +2286,8 @@ public class application {
         frame.add(nametext);
         frame.add(company);
         frame.add(companytext);
+        frame.add(gstin);
+        frame.add(gstintext);
         frame.add(phone);
         frame.add(phonetext);
         frame.add(email);
@@ -2171,7 +2355,7 @@ public class application {
                 int selectedrow = datatable.rowAtPoint(e.getPoint());
                 Object val1 = model.getValueAt(selectedrow, 0);
 
-                String searchquery1 = "select Order_Id, Item_Name, Quantity, Rate, Quantity*Rate AS Price from items WHERE Order_Id = " + val1;
+                String searchquery1 = "select Order_Id, Item_Name, Quantity, Rate, Quantity*Rate AS Price from items, item_stock WHERE Order_Id = " + val1 + " AND items.Item_Id = item_stock.Item_Id";
 
                 DefaultTableModel model1 = new DefaultTableModel();
                 model1.addColumn("Order ID");
@@ -2266,7 +2450,7 @@ public class application {
         frame.repaint();
         frame.setLayout(new GridLayout(1, 2, 10, 10));
 
-        String query = "SELECT * FROM bills, payments WHERE bills.Bill_Id = payments.Bill_Id";
+        String query = "SELECT * FROM bills, payments, customers WHERE bills.Bill_Id = payments.Bill_Id AND bills.Customer_Id = customers.Customer_Id";
 
         DefaultTableModel model = new DefaultTableModel();
         model.addColumn("Bill ID");
@@ -2275,6 +2459,8 @@ public class application {
         model.addColumn("Bill Time");
         model.addColumn("Customer Name");
         model.addColumn("Customer Company");
+        model.addColumn("Billing Address");
+        model.addColumn("Shipping Address");
         model.addColumn("Payment Method");
         model.addColumn("Payment Status");
         model.addColumn("Created by");
@@ -2283,16 +2469,18 @@ public class application {
             Statement statementselect3 = connection.createStatement();
             ResultSet resultsetselect3 = statementselect3.executeQuery(query);
             while(resultsetselect3.next()){
-                Object[] row = new Object[9];
+                Object[] row = new Object[11];
                 row[0]=resultsetselect3.getObject("Bill_Id");
                 row[1]=resultsetselect3.getObject("Order_Id");
                 row[2]=resultsetselect3.getObject("Date");
                 row[3]=resultsetselect3.getObject("Time");
                 row[4]=resultsetselect3.getObject("Customer_Name");
                 row[5]=resultsetselect3.getObject("Customer_Company");
-                row[6]=resultsetselect3.getObject("Payment_Method");
-                row[7]=resultsetselect3.getObject("Payment_Status");
-                row[8]=resultsetselect3.getObject("User_Name");
+                row[6]=resultsetselect3.getObject("Address");
+                row[7]=resultsetselect3.getObject("Shipping_Address");
+                row[8]=resultsetselect3.getObject("Payment_Method");
+                row[9]=resultsetselect3.getObject("Payment_Status");
+                row[10]=resultsetselect3.getObject("User_Name");
                 model.addRow(row);
             }
         } catch(SQLException e){
@@ -2313,7 +2501,7 @@ public class application {
                 int selectedrow = datatable.rowAtPoint(e.getPoint());
                 Object val1 = model.getValueAt(selectedrow, 0);
 
-                String searchquery1 = "select Item_Id, Item_Name, Quantity, Rate, Quantity*Rate AS Price, ROUND(tax_percentage*Quantity*Rate/100, 2) AS Tax from items NATURAL JOIN bills WHERE Bill_Id = " + val1;
+                String searchquery1 = "select Item_Id, Item_Name, Quantity, Rate, Quantity*Rate AS Price, ROUND(tax_percentage*Quantity*Rate/100, 2) AS Tax from items NATURAL JOIN bills NATURAL JOIN item_stock WHERE Bill_Id = " + val1;
 
                 DefaultTableModel model1 = new DefaultTableModel();
                 model1.addColumn("Item ID");
@@ -2326,6 +2514,7 @@ public class application {
                 try{
                     Statement statementselect = connection.createStatement();
                     ResultSet resultsetselect = statementselect.executeQuery(searchquery1);
+                    float total = 0;
                     while(resultsetselect.next()){
                         Object[] row = new Object[6];
                         row[0]=resultsetselect.getObject("Item_Id");
@@ -2334,8 +2523,18 @@ public class application {
                         row[3]=resultsetselect.getObject("Rate");
                         row[4]=resultsetselect.getObject("Price");
                         row[5]=resultsetselect.getObject("Tax");
+                        total+=resultsetselect.getFloat("Price");
+                        total+=resultsetselect.getFloat("Tax");
                         model1.addRow(row);
                     }
+                    Object[] row = new Object[6];
+                    row[0]="";
+                    row[1]="";
+                    row[2]="";
+                    row[3]="";
+                    row[4]="Total";
+                    row[5]=total;
+                    model1.addRow(row);
                     datatable1.setModel(model1);
                 } catch(SQLException e1){
                     e1.printStackTrace();
@@ -2423,6 +2622,7 @@ public class application {
         model.addColumn("Customer ID");
         model.addColumn("Customer Name");
         model.addColumn("Customer Company");
+        model.addColumn("GSTIN");
         model.addColumn("Phone Number");
         model.addColumn("Email");
         model.addColumn("Address");
@@ -2431,13 +2631,14 @@ public class application {
             Statement statementselect = connection.createStatement();
             ResultSet resultsetselect = statementselect.executeQuery(searchquery);
             while(resultsetselect.next()){
-                Object[] row = new Object[6];
+                Object[] row = new Object[7];
                 row[0]=resultsetselect.getObject("Customer_id");
                 row[1]=resultsetselect.getObject("Customer_Name");
                 row[2]=resultsetselect.getObject("Customer_Company");
-                row[3]=resultsetselect.getObject("Phone_Number");
-                row[4]=resultsetselect.getObject("Email");
-                row[5]=resultsetselect.getObject("Address");
+                row[3]=resultsetselect.getObject("GSTIN");
+                row[4]=resultsetselect.getObject("Phone_Number");
+                row[5]=resultsetselect.getObject("Email");
+                row[6]=resultsetselect.getObject("Address");
                 model.addRow(row);
             }
         } catch(SQLException e){
@@ -2466,21 +2667,23 @@ public class application {
                     modelsq.addColumn("Customer ID");
                     modelsq.addColumn("Customer Name");
                     modelsq.addColumn("Customer Company");
+                    modelsq.addColumn("GSTIN");
                     modelsq.addColumn("Phone Number");
                     modelsq.addColumn("Email");
                     modelsq.addColumn("Address");
-                    String sq = "SELECT * FROM customers WHERE Customer_Id LIKE '%" + search.getText() + "%' or Customer_Name LIKE '%" + search.getText() + "%' or Customer_Company LIKE '%" + search.getText() + "%' or Phone_Number LIKE '%" + search.getText() + "%' or Email LIKE '%" + search.getText() + "%' or Address LIKE '%" + search.getText() + "%'";
+                    String sq = "SELECT * FROM customers WHERE Customer_Id LIKE '%" + search.getText() + "%' or Customer_Name LIKE '%" + search.getText() + "%' or Customer_Company LIKE '%" + search.getText() + "%' or GSTIN LIKE '%" + search.getText() + "%' or Phone_Number LIKE '%" + search.getText() + "%' or Email LIKE '%" + search.getText() + "%' or Address LIKE '%" + search.getText() + "%'";
                     try{
                         Statement statementselect = connection.createStatement();
                         ResultSet resultsetselect = statementselect.executeQuery(sq);
                         while(resultsetselect.next()){
-                            Object[] row = new Object[6];
+                            Object[] row = new Object[7];
                             row[0]=resultsetselect.getObject("Customer_id");
                             row[1]=resultsetselect.getObject("Customer_Name");
                             row[2]=resultsetselect.getObject("Customer_Company");
-                            row[3]=resultsetselect.getObject("Phone_Number");
-                            row[4]=resultsetselect.getObject("Email");
-                            row[5]=resultsetselect.getObject("Address");
+                            row[3]=resultsetselect.getObject("GSTIN");
+                            row[4]=resultsetselect.getObject("Phone_Number");
+                            row[5]=resultsetselect.getObject("Email");
+                            row[6]=resultsetselect.getObject("Address");
                             modelsq.addRow(row);
                         }
                     } catch(SQLException esq){
@@ -2630,7 +2833,7 @@ public class application {
         panel3.setLayout(new GridBagLayout());
         GridBagConstraints gbc3 = new GridBagConstraints();
 
-        String query3="SELECT * FROM bills NATURAL JOIN payments WHERE Payment_Status = 'Pending' OR Payment_Status = 'Partial Payment'";
+        String query3="SELECT * FROM bills NATURAL JOIN payments NATURAL JOIN customers WHERE Payment_Status = 'Pending' OR Payment_Status = 'Partial Payment'";
 
         DefaultTableModel model3 = new DefaultTableModel();
         model3.addColumn("Bill ID");
@@ -2748,7 +2951,7 @@ public class application {
         addresstext.setBackground(new Color(0x99ccff));
         addresstext.setForeground(new Color(0x000099));
         addresstext.setCaretColor(new Color(0x000099));
-        addresstext.setBounds(165, 100, 400, 35);
+        addresstext.setBounds(165, 100, 500, 35);
 
         JLabel email = new JLabel("Email:");
         email.setForeground(new Color(0x293dff));
@@ -2763,7 +2966,7 @@ public class application {
         emailtext.setBackground(new Color(0x99ccff));
         emailtext.setForeground(new Color(0x000099));
         emailtext.setCaretColor(new Color(0x000099));
-        emailtext.setBounds(75, 145, 200, 35);
+        emailtext.setBounds(75, 145, 400, 35);
 
         JLabel website = new JLabel("Website:");
         website.setForeground(new Color(0x293dff));
@@ -2778,7 +2981,7 @@ public class application {
         websitetext.setBackground(new Color(0x99ccff));
         websitetext.setForeground(new Color(0x000099));
         websitetext.setCaretColor(new Color(0x000099));
-        websitetext.setBounds(105, 190, 200, 35);
+        websitetext.setBounds(105, 190, 400, 35);
 
         JLabel phone = new JLabel("Phone:");
         phone.setForeground(new Color(0x293dff));
@@ -2952,7 +3155,7 @@ public class application {
         addresstext.setBackground(new Color(0x99ccff));
         addresstext.setForeground(new Color(0x000099));
         addresstext.setCaretColor(new Color(0x000099));
-        addresstext.setBounds(800, 120, 400, 35);
+        addresstext.setBounds(800, 120, 500, 35);
 
         JLabel email = new JLabel("Email:");
         email.setForeground(new Color(0x293dff));
@@ -2966,7 +3169,7 @@ public class application {
         emailtext.setBackground(new Color(0x99ccff));
         emailtext.setForeground(new Color(0x000099));
         emailtext.setCaretColor(new Color(0x000099));
-        emailtext.setBounds(800, 170, 200, 35);
+        emailtext.setBounds(800, 170, 400, 35);
 
         JLabel website = new JLabel("Website:");
         website.setForeground(new Color(0x293dff));
@@ -2980,7 +3183,7 @@ public class application {
         websitetext.setBackground(new Color(0x99ccff));
         websitetext.setForeground(new Color(0x000099));
         websitetext.setCaretColor(new Color(0x000099));
-        websitetext.setBounds(800, 220, 200, 35);
+        websitetext.setBounds(800, 220, 400, 35);
 
         JLabel phone = new JLabel("Phone:");
         phone.setForeground(new Color(0x293dff));
@@ -2994,7 +3197,7 @@ public class application {
         phonetext.setBackground(new Color(0x99ccff));
         phonetext.setForeground(new Color(0x000099));
         phonetext.setCaretColor(new Color(0x000099));
-        phonetext.setBounds(800, 270, 200, 35);
+        phonetext.setBounds(800, 270, 300, 35);
 
         JButton adddetails = new JButton("Add Details");
         adddetails.setFocusable(false);
